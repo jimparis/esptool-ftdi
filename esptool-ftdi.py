@@ -15,9 +15,6 @@ import ctypes.util
 import functools
 import time
 
-sys.path.append("esp-idf/components/esptool_py/esptool")
-import esptool
-
 class ftdi_context_partial(ctypes.Structure):
     # This is for libftdi 1.0+
     _fields_ = [('libusb_context', ctypes.c_void_p),
@@ -238,6 +235,25 @@ class serial_via_libftdi(object):
             if time.time() - start > self._timeout:
                 return b''
 
-esptool.serial = serial_via_libftdi
-printf("esptool-ftdi.py wrapper\n")
-esptool.main()
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        raise SystemExit("usage: %s <path-to-esptool.py> [args...]"
+                         % sys.argv[0])
+
+    # Import esptool from the provided location
+    if sys.version_info >= (3,5):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("esptool", sys.argv[1])
+        esptool = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(esptool)
+    elif sys.version_info >= (3,3):
+        from importlib.machinery import SourceFileLoader
+        esptool = SourceFileLoader("esptool", sys.argv[1]).load_module()
+    else:
+        import imp
+        esptool = imp.load_source("esptool", sys.argv[1])
+
+    esptool.serial = serial_via_libftdi
+    printf("esptool-ftdi.py wrapper\n")
+    sys.argv[1:] = sys.argv[2:]
+    esptool.main()
