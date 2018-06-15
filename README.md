@@ -52,3 +52,16 @@ run this and be much happier:
     Chip ID: 0xe2b4e62dac76
     Hard resetting via RTS pin...
     $
+
+## Integrating with ESP-IDF
+
+In your Makefile, after the line
+
+    include $(IDF_PATH)/make/project.mk
+
+add
+
+    ESPTOOL_FTDI := /path/to/esptool-ftdi.py
+    ESPTOOLPY_SERIAL := $(PYTHON) $(ESPTOOL_FTDI) $(ESPTOOLPY_SRC) --chip esp32 --port $(ESPPORT) --baud $(ESPBAUD) --before $(CONFIG_ESPTOOLPY_BEFORE) --after $(CONFIG_ESPTOOLPY_AFTER)
+
+This could be simplified with some changes in ESP-IDF.
