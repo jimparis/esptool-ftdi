@@ -238,25 +238,32 @@ class serial_via_libftdi(object):
 # Old esptool compares serial objects against this
 serial_via_libftdi.Serial = serial_via_libftdi
 
+def import_from_path(path, name="esptool"):
+    if not os.path.isfile(path):
+        raise Exception("No such file: %s" % path)
+
+    # Import esptool from the provided location
+    if sys.version_info >= (3,5):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(name, path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+    elif sys.version_info >= (3,3):
+        from importlib.machinery import SourceFileLoader
+        module = SourceFileLoader(name, path).load_module()
+    else:
+        import imp
+        module = imp.load_source(name, path)
+    return module
+
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         raise SystemExit("usage: %s <path-to-esptool.py> [args...]"
                          % sys.argv[0])
 
-    # Import esptool from the provided location
-    if sys.version_info >= (3,5):
-        import importlib.util
-        spec = importlib.util.spec_from_file_location("esptool", sys.argv[1])
-        esptool = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(esptool)
-    elif sys.version_info >= (3,3):
-        from importlib.machinery import SourceFileLoader
-        esptool = SourceFileLoader("esptool", sys.argv[1]).load_module()
-    else:
-        import imp
-        esptool = imp.load_source("esptool", sys.argv[1])
-
-    esptool.serial = serial_via_libftdi
     printf("esptool-ftdi.py wrapper\n")
+
+    esptool = import_from_path(sys.argv[1])
+    esptool.serial = serial_via_libftdi
     sys.argv[1:] = sys.argv[2:]
     esptool.main()
