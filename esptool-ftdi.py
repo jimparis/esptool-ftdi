@@ -206,7 +206,11 @@ class serial_via_libftdi(object):
         self._baudrate = val;
 
     def write(self, buf):
-        data = ctypes.create_string_buffer(buf)
+        try:
+            bytesbuf = bytes(buf)
+        except TypeError:
+            bytesbuf = buf.encode('latin1')
+        data = ctypes.create_string_buffer(bytesbuf)
         written = self.ftdi_fn.ftdi_write_data(ctypes.byref(data), len(buf))
         if written < 0:
             self._ftdi_error("ftdi_write_data")
@@ -226,13 +230,13 @@ class serial_via_libftdi(object):
 
     def read(self, count):
         start = time.time()
-        ret = ''
+        ret = b''
         while True:
             ret += self._read(count - len(ret))
             if len(ret) >= count:
                 return ret
             if time.time() - start > self._timeout:
-                return ''
+                return b''
 
 esptool.serial = serial_via_libftdi
 printf("esptool-ftdi.py wrapper\n")
