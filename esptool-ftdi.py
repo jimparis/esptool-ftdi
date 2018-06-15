@@ -235,6 +235,9 @@ class serial_via_libftdi(object):
             if time.time() - start > self._timeout:
                 return b''
 
+# Old esptool compares serial objects against this
+serial_via_libftdi.Serial = serial_via_libftdi
+
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         raise SystemExit("usage: %s <path-to-esptool.py> [args...]"
