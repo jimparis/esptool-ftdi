@@ -136,7 +136,7 @@ class serial_via_libftdi(object):
         # it were DTR, by going in and out of bitbang mode:
         #  self.dtr self.rts mode     cts=   rts=
         #  False    False    normal   float  1
-        #  False    True     bitbang  1      1
+        #  False    True     bitbang  1      0
         #  True     False    bitbang  0      1
         #  True     True     bitbang  0      0
         #printf("EN %d BOOT %d\n", self.rts == False, self.dtr == False);
