@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Invoke esptool, but replace the serial module with a wrapper that
-# uses RTS/CTS instead of RTS/DTR via bitbang mode.  This only works
+# uses CTS/DTR instead of RTS/DTR via bitbang mode.  This only works
 # on FTDI devices, and requires libftdi1 and libusb-1.0.
 
 from __future__ import print_function
@@ -133,9 +133,9 @@ class serial_via_libftdi(object):
 
     def _ftdi_update_control(self):
         # Set control lines.  This is where we make CTS behave as if
-        # it were DTR, by going in and out of bitbang mode:
-        #  self.dtr self.rts mode     cts=   rts=
-        #  False    False    normal   float  1
+        # it were RTS, by going in and out of bitbang mode:
+        #  self.dtr self.rts mode     dtr=   cts=
+        #  False    False    normal   1      float
         #  False    True     bitbang  1      0
         #  True     False    bitbang  0      1
         #  True     True     bitbang  0      0
@@ -143,9 +143,9 @@ class serial_via_libftdi(object):
 
         val = 0
         if self.dtr == False:
-            val |= 0x08  # CTS high
+            val |= 0x10  # DTR high
         if self.rts == False:
-            val |= 0x04  # RTS high
+            val |= 0x08  # CTS high
 
         if (self.dtr, self.rts) == (False, False):
             # Normal mode
