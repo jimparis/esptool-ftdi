@@ -13,7 +13,10 @@ import os
 import ctypes
 import ctypes.util
 import functools
+import re
+import sys
 import time
+import usb.core
 
 class ftdi_context_partial(ctypes.Structure):
     # This is for libftdi 1.0+
@@ -57,7 +60,7 @@ class serial_via_libftdi(object):
         if getattr(self, 'cleanup_deinit', False):
             self.ftdi_fn.ftdi_deinit()
 
-    def _find_port(self, port):
+    def _find_port_linux(self, port):
         # Find the port
         s = os.stat(port)
         path = "/sys/dev/char/%d:%d" % (
@@ -91,6 +94,18 @@ class serial_via_libftdi(object):
                devnum, interface)
         return (busnum, devnum, interface)
 
+    def _find_port_libusb(self, port):
+        m = re.search('\.usbserial-(.*)$', port)
+        args = {}
+        if m:
+            print("Looking for serial %s" % m.group(1))
+            args['serial_number'] = m.group(1)
+        idVendor = 0x0403
+        dev = usb.core.find(idVendor=idVendor, **args)
+        if dev is None:
+            raise Exception("can't find any devices with vendor %x" % idVendor)
+        return (dev.bus, dev.address, 0)
+
     def __del__(self):
         self._ftdi_close()
 
@@ -113,7 +128,14 @@ class serial_via_libftdi(object):
         self.ftdi.ftdi_get_error_string.restype = ctypes.c_char_p
 
         # Find port
-        (busnum, devnum, self.interface) = self._find_port(port)
+        print('Searching for port %s' % port)
+        try:
+            (busnum, devnum, self.interface) = self._find_port_linux(port)
+        except:
+            # Try falling back to using libusb to search.
+            (busnum, devnum, self.interface) = self._find_port_libusb(port)
+        print("Found busnum %d device %d interface %d" % 
+              (busnum, devnum, self.interface))
 
         # Open it via libftdi
         try:
@@ -128,6 +150,7 @@ class serial_via_libftdi(object):
             self.cleanup_close = True
             self.ftdi_fn.ftdi_set_bitmode(0, 0)
             self.ftdi_fn.ftdi_setrts(0)
+            print("FTDI configured")
         except FTDIError as e:
             self._ftdi_error(e.message)
 
@@ -234,6 +257,9 @@ class serial_via_libftdi(object):
                 return ret
             if time.time() - start > self._timeout:
                 return b''
+
+    def close(self):
+        self._ftdi_close()
 
 # Old esptool compares serial objects against this
 serial_via_libftdi.Serial = serial_via_libftdi
