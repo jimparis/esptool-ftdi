@@ -235,6 +235,9 @@ class serial_via_libftdi(object):
             if time.time() - start > self._timeout:
                 return b''
 
+    def close(self):
+        self._ftdi_close()
+
 # Old esptool compares serial objects against this
 serial_via_libftdi.Serial = serial_via_libftdi
 
