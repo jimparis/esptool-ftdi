@@ -13,6 +13,17 @@ internal `esptool.py` serial routines with direct calls into
 bitbang modes as needed to make the typical reset-into-bootloader
 sequence work.
 
+## Hardware connections
+
+| FTDI  | ESP32            |
+|-------|------------------|
+| `GND` | `GND`            |
+| `VIO` | `3V3`            |
+| `RX`  | `U0TXD`          |
+| `TX`  | `U0RXD`          |
+| `RTS` | `EN` (`CHP_PU`)  |
+| `CTS` | `BOOT` (`GPIO0`) |
+
 ## Requirements
 
 * [libftdi1 1.4](https://www.intra2net.com/en/developer/libftdi/index.php)
