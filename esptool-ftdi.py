@@ -153,7 +153,7 @@ class serial_via_libftdi(object):
             self.ftdi_fn.ftdi_setrts(0)
             print("FTDI configured")
         except FTDIError as e:
-            self._ftdi_error(e.message)
+            self._ftdi_error(str(e))
 
     def _ftdi_update_control(self):
         # Set control lines.  This is where we make CTS behave as if
