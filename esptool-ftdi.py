@@ -17,6 +17,7 @@ import re
 import sys
 import time
 import usb.core
+import shutil
 
 class ftdi_context_partial(ctypes.Structure):
     # This is for libftdi 1.0+
@@ -264,22 +265,26 @@ class serial_via_libftdi(object):
 # Old esptool compares serial objects against this
 serial_via_libftdi.Serial = serial_via_libftdi
 
-def import_from_path(path, name="esptool"):
-    if not os.path.isfile(path):
-        raise Exception("No such file: %s" % path)
+def import_from_path(esptool_path, name="esptool"):
+    if not os.path.isfile(esptool_path):
+        esptool_lookup = shutil.which(esptool_path)
+        if esptool_lookup == None:
+            raise Exception("No such file: %s" % esptool_path)
+        else:
+            esptool_path = esptool_lookup
 
     # Import esptool from the provided location
     if sys.version_info >= (3,5):
         import importlib.util
-        spec = importlib.util.spec_from_file_location(name, path)
+        spec = importlib.util.spec_from_file_location(name, esptool_path)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
     elif sys.version_info >= (3,3):
         from importlib.machinery import SourceFileLoader
-        module = SourceFileLoader(name, path).load_module()
+        module = SourceFileLoader(name, esptool_path).load_module()
     else:
         import imp
-        module = imp.load_source(name, path)
+        module = imp.load_source(name, esptool_path)
     return module
 
 if __name__ == "__main__":
