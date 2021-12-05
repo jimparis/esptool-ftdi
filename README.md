@@ -29,15 +29,15 @@ sequence work.
 * [libftdi1 1.4](https://www.intra2net.com/en/developer/libftdi/index.php)
 * [libusb 1.0](https://libusb.info/)
 
-This was tested on Linux only.  Some of the `ctypes` library loading
-probably needs to be tweaked for other OSes.
+This was tested on Linux and macOS.  For other OSes, changes to the low level
+USB access may be needed.
 
 ## Usage
 
     $ ./esptool-ftdi.py
     usage: ./esptool-ftdi.py <path-to-esptool.py> [args...]
 
-Simply prepend `esptool-ftdi.py` to your existing esptool command
+To use it, prepend `esptool-ftdi.py` to your existing esptool command
 line.  For example, instead of:
 
     $ esptool.py chip_id
@@ -66,13 +66,10 @@ run this and be much happier:
 
 ## Integrating with ESP-IDF
 
-In your Makefile, after the line
+For esp-idf v4.4 or later, you can set the `ESPTOOL_WRAPPER`
+environment variable to point to `esptool-ftdi.py`, and it will be
+invoked automatically.  For example:
 
-    include $(IDF_PATH)/make/project.mk
+    export ESPTOOL_WRAPPER=/path/to/esptool-ftdi.py
+    idf.py flash
 
-add
-
-    ESPTOOL_FTDI := /path/to/esptool-ftdi.py
-    ESPTOOLPY_SERIAL := $(PYTHON) $(ESPTOOL_FTDI) $(ESPTOOLPY_SRC) --chip esp32 --port $(ESPPORT) --baud $(ESPBAUD) --before $(CONFIG_ESPTOOLPY_BEFORE) --after $(CONFIG_ESPTOOLPY_AFTER)
-
-This could be simplified with some changes in ESP-IDF.
