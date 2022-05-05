@@ -160,7 +160,7 @@ class serial_via_libftdi(object):
 
         # Bitbang mode
         if not self.bitmode:
-            self.ftdi_fn.ftdi_set_bitmode(0x0d, 0x01)
+            self.ftdi_fn.ftdi_set_bitmode(0x1d, 0x01)
         self.bitmode = True
         self.write("%c" % val)
 
