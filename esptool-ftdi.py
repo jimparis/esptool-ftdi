@@ -160,7 +160,11 @@ class serial_via_libftdi(object):
 
         # Bitbang mode
         if not self.bitmode:
-            self.ftdi_fn.ftdi_set_bitmode(0x0d, 0x01)
+            # set bitmode using the bitmask and mode (0x01 = bit-banging)
+            # the bitmask is referencing the pins as follows ( https://ftdichip.com/wp-content/uploads/2020/07/AN_184-FTDI-Device-Input-Output-Pin-States.pdf table 5.3) :
+            # 7    6   5   4   3   2   1   0
+            # RI  DCD DSR DTR CTS RTS RXD TXD
+            self.ftdi_fn.ftdi_set_bitmode(0x1d, 0x01)
         self.bitmode = True
         self.write("%c" % val)
 
