@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Invoke esptool, but replace the serial module with a wrapper that
 # uses RTS/CTS instead of RTS/DTR via bitbang mode.  This only works
