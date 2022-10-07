@@ -197,6 +197,7 @@ class serial_via_libftdi(object):
 
     def flushInput(self):
         self.ftdi_fn.ftdi_usb_purge_rx_buffer()
+    reset_input_buffer = flushInput
 
     def flushOutput(self):
         self.ftdi_fn.ftdi_usb_purge_tx_buffer()
@@ -290,6 +291,13 @@ if __name__ == "__main__":
     printf("esptool-ftdi.py wrapper\n")
 
     esptool = import_from_path(sys.argv[1])
-    esptool.serial = serial_via_libftdi
     sys.argv[1:] = sys.argv[2:]
-    esptool.main()
+
+    try:
+        # try esptool >= 4.x
+        esptool.esptool.loader.serial = serial_via_libftdi
+        esptool.esptool._main()
+    except AttributeError:
+        # probably esptool < 4.x
+        esptool.serial = serial_via_libftdi
+        esptool.main()
