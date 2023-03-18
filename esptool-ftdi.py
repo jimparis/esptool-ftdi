@@ -111,6 +111,7 @@ class serial_via_libftdi(object):
         self._ftdi_close()
 
     def __init__(self, port):
+        self.name = "rfc2217:esptool-ftdi"
         self.port = port
         self._baudrate = 9600
         self._timeout = 5.0
