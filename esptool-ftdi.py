@@ -4,20 +4,16 @@
 # uses RTS/CTS instead of RTS/DTR via bitbang mode.  This only works
 # on FTDI devices, and requires libftdi1 and libusb-1.0.
 
-from __future__ import print_function
-def printf(str, *args):
-    print(str % args, end='')
-
-import sys
 import os
-import ctypes
-import ctypes.util
-import functools
 import re
 import sys
 import time
-import usb.core
+import types
 import shutil
+import functools
+import ctypes
+import ctypes.util
+import usb.core
 
 class ftdi_context_partial(ctypes.Structure):
     # This is for libftdi 1.0+
@@ -29,11 +25,10 @@ class ftdi_context_partial(ctypes.Structure):
 class FTDIError(Exception):
     pass
 
-class serial_via_libftdi(object):
-    @staticmethod
-    def serial_for_url(port):
-        return serial_via_libftdi(port)
+def log(msg):
+    print(f"esptool-ftdi: {msg}")
 
+class serial_via_libftdi(object):
     @property
     def ftdi_fn(self):
         class FtdiForwarder(object):
@@ -48,7 +43,6 @@ class serial_via_libftdi(object):
 
     def _ftdi_close(self):
         if getattr(self, 'cleanup_close', False):
-            #printf("reattaching and closing\n")
             context = ctypes.cast(ctypes.byref(self.ctx),
                                   ctypes.POINTER(ftdi_context_partial)).contents
             pdev = ctypes.c_void_p(context.libusb_device_handle)
@@ -91,15 +85,14 @@ class serial_via_libftdi(object):
             path = os.path.realpath(os.path.join(path, ".."))
         else:
             raise Exception("can't find bus/device/interface for that port")
-        printf("%s is at bus %d dev %d interface %d\n", port, busnum,
-               devnum, interface)
+        log(f"{port} is at bus {busnum} dev {devnum} interface {interface}")
         return (busnum, devnum, interface)
 
     def _find_port_libusb(self, port):
-        m = re.search('\.usbserial-(.*)$', port)
+        m = re.search('[.]usbserial-(.*)$', port)
         args = {}
         if m:
-            print("Looking for serial %s" % m.group(1))
+            log(f"Looking for serial {m.group(1)}")
             args['serial_number'] = m.group(1)
         idVendor = 0x0403
         dev = usb.core.find(idVendor=idVendor, **args)
@@ -130,14 +123,13 @@ class serial_via_libftdi(object):
         self.ftdi.ftdi_get_error_string.restype = ctypes.c_char_p
 
         # Find port
-        print('Searching for port %s' % port)
+        log(f"Searching for port {port}")
         try:
             (busnum, devnum, self.interface) = self._find_port_linux(port)
         except:
             # Try falling back to using libusb to search.
             (busnum, devnum, self.interface) = self._find_port_libusb(port)
-        print("Found busnum %d device %d interface %d" % 
-              (busnum, devnum, self.interface))
+        log(f"Found busnum {busnum} device {devnum} interface {self.interface}")
 
         # Open it via libftdi
         try:
@@ -152,7 +144,7 @@ class serial_via_libftdi(object):
             self.cleanup_close = True
             self.ftdi_fn.ftdi_set_bitmode(0, 0)
             self.ftdi_fn.ftdi_setrts(0)
-            print("FTDI configured")
+            log(f"FTDI configured")
         except FTDIError as e:
             self._ftdi_error(str(e))
 
@@ -164,7 +156,7 @@ class serial_via_libftdi(object):
         #  False    True     bitbang  1      0
         #  True     False    bitbang  0      1
         #  True     True     bitbang  0      0
-        #printf("EN %d BOOT %d\n", self.rts == False, self.dtr == False);
+        #log(f"EN {self.rts == False} BOOT {self.dtr == False}")
 
         val = 0
         if self.dtr == False:
@@ -264,9 +256,6 @@ class serial_via_libftdi(object):
     def close(self):
         self._ftdi_close()
 
-# Old esptool compares serial objects against this
-serial_via_libftdi.Serial = serial_via_libftdi
-
 def import_from_path(esptool_path, name="esptool"):
     if not os.path.isfile(esptool_path):
         esptool_lookup = shutil.which(esptool_path)
@@ -294,16 +283,24 @@ if __name__ == "__main__":
         raise SystemExit("usage: %s <path-to-esptool.py> [args...]"
                          % sys.argv[0])
 
-    printf("esptool-ftdi.py wrapper\n")
+    log(f"esptool-ftdi.py wrapper")
 
-    esptool = import_from_path(sys.argv[1])
-    sys.argv[1:] = sys.argv[2:]
+    real_esptool_py = sys.argv[1]
+
+    import serial as fake_serial
+    fake_serial.Serial = serial_via_libftdi
+    fake_serial.serial_for_url = serial_via_libftdi
+    sys.modules["serial"] = fake_serial
 
     try:
-        # try esptool >= 4.x
-        esptool.esptool.loader.serial = serial_via_libftdi
-        esptool.esptool._main()
+        # real esptool provided
+        esptool = import_from_path(real_esptool_py)
+        esptool_main = esptool.esptool._main
     except AttributeError:
-        # probably esptool < 4.x
-        esptool.serial = serial_via_libftdi
-        esptool.main()
+        # may be the esptool wrapper inside esp-idf, in which case
+        # we'd already have the real esptool >= 5.x on our module path
+        import esptool
+        esptool_main = esptool._main
+
+    sys.argv[1:] = sys.argv[2:]
+    esptool_main()
