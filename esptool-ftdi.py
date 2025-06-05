@@ -103,7 +103,7 @@ class serial_via_libftdi(object):
     def __del__(self):
         self._ftdi_close()
 
-    def __init__(self, port):
+    def __init__(self, port, exclusive = True, do_not_open = False):
         self.name = "rfc2217:esptool-ftdi"
         self.port = port
         self._baudrate = 9600
@@ -111,6 +111,7 @@ class serial_via_libftdi(object):
         self.dtr = False
         self.rts = False
         self.bitmode = False
+        self._isOpen = False
 
         # Load libftdi and libusb
         def load_lib(name):
@@ -122,13 +123,17 @@ class serial_via_libftdi(object):
         self.ftdi = load_lib('ftdi1')
         self.ftdi.ftdi_get_error_string.restype = ctypes.c_char_p
 
+        if not do_not_open:
+            self.open()
+
+    def open(self):
         # Find port
-        log(f"Searching for port {port}")
+        log(f"Searching for port {self.port}")
         try:
-            (busnum, devnum, self.interface) = self._find_port_linux(port)
+            (busnum, devnum, self.interface) = self._find_port_linux(self.port)
         except:
             # Try falling back to using libusb to search.
-            (busnum, devnum, self.interface) = self._find_port_libusb(port)
+            (busnum, devnum, self.interface) = self._find_port_libusb(self.port)
         log(f"Found busnum {busnum} device {devnum} interface {self.interface}")
 
         # Open it via libftdi
@@ -145,8 +150,12 @@ class serial_via_libftdi(object):
             self.ftdi_fn.ftdi_set_bitmode(0, 0)
             self.ftdi_fn.ftdi_setrts(0)
             log(f"FTDI configured")
+            self._isOpen = True
         except FTDIError as e:
             self._ftdi_error(str(e))
+
+    def isOpen(self):
+        return self._isOpen
 
     def _ftdi_update_control(self):
         # Set control lines.  This is where we make CTS behave as if
@@ -255,6 +264,7 @@ class serial_via_libftdi(object):
 
     def close(self):
         self._ftdi_close()
+        self._isOpen = False
 
 def import_from_path(esptool_path, name="esptool"):
     if not os.path.isfile(esptool_path):
